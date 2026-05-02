@@ -1,41 +1,53 @@
 const express = require("express");
-const ytdl = require("ytdl-core");
+const { exec } = require("child_process");
 
 const app = express();
 
-// صحة السيرفر
 app.get("/", (req, res) => {
-    res.send("API is running 🚀");
+    res.send("yt-dlp API running 🚀");
 });
 
-// MP3 / MP4 info مباشر
-app.get("/download", async (req, res) => {
-    const { url } = req.query;
+// MP3 / Audio link
+app.get("/mp3", (req, res) => {
+    const url = req.query.url;
 
-    if (!url || !ytdl.validateURL(url)) {
-        return res.status(400).json({ error: "Invalid URL" });
+    if (!url) {
+        return res.status(400).json({ error: "No URL" });
     }
 
-    try {
-        const info = await ytdl.getInfo(url);
+    const cmd = `yt-dlp -f bestaudio -g "${url}"`;
 
-        const format = ytdl.chooseFormat(info.formats, {
-            quality: "highestaudio"
-        });
+    exec(cmd, (err, stdout) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
 
         res.json({
-            title: info.videoDetails.title,
-            url: format.url
+            url: stdout.trim()
         });
+    });
+});
 
-    } catch (err) {
-        res.status(500).json({
-            error: err.message
-        });
+// MP4 / Video link
+app.get("/mp4", (req, res) => {
+    const url = req.query.url;
+
+    if (!url) {
+        return res.status(400).json({ error: "No URL" });
     }
+
+    const cmd = `yt-dlp -f best -g "${url}"`;
+
+    exec(cmd, (err, stdout) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+
+        res.json({
+            url: stdout.trim()
+        });
+    });
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log("Server running on port " + PORT);
-});
+app.listen(PORT, () => console.log("Server running"));
